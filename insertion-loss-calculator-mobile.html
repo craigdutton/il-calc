@@ -6,13 +6,16 @@
   <title>Insertion Loss Calculator — Mobile</title>
   <meta name="theme-color" content="#111827" />
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- ✅ PWA + iOS meta -->
   <link rel="manifest" href="./manifest.webmanifest" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
   <style>
-    body { font-family: -apple-system, system-ui, Segoe UI, Roboto, Inter, sans-serif; background:#0b1220; color:#e5e7eb; margin:0; padding-bottom:180px; }
-    .shell { max-width:640px; margin:auto; padding:16px; }
+    body { font-family:-apple-system,system-ui,Segoe UI,Roboto,Inter,sans-serif; background:#0b1220; color:#e5e7eb; margin:0; padding-bottom:200px; }
+    .shell { max-width:720px; margin:auto; padding:16px; }
     .card { background:#0f172a; border:1px solid #1f2937; border-radius:16px; padding:16px; margin-bottom:16px; }
     .label { display:block; font-size:14px; margin-bottom:6px; color:#cbd5e1; }
     .big-input, select { width:100%; min-height:56px; font-size:18px; padding:12px 16px; border-radius:12px; border:1px solid #334155; background:#111827; color:#e5e7eb; }
@@ -22,104 +25,141 @@
     .badge { display:inline-block; padding:6px 10px; border-radius:999px; font-size:14px; text-align:center; min-width:70px; }
     .pass { color:#10B981; background:#064e3b; border:1px solid #065f46; }
     .fail { color:#FCA5A5; background:#7f1d1d; border:1px solid #991b1b; }
+    .footer { position:fixed; left:0; right:0; bottom:0; background:rgba(15,23,42,.9); border-top:1px solid #1f2937; padding:16px; }
   </style>
 </head>
+
 <body>
   <div class="shell">
     <h1 style="font-size:26px;font-weight:700;margin-bottom:8px;">Insertion Loss Calculator</h1>
-    <p style="color:#9ca3af;margin-bottom:16px;">Field tool · Mobile friendly · Offline ready</p>
+    <p style="color:#9ca3af;margin-bottom:16px;">Full standalone field tool · Mobile ready · Offline capable</p>
 
+    <!-- Export URL -->
     <section class="card">
-      <label class="label" for="cableId">Cable ID / Core #</label>
-      <input class="big-input" id="cableId" placeholder="PNL-01-A-001" autocomplete="off" />
+      <label class="label" for="googleScriptUrl">Google Sheets Web App URL (optional)</label>
+      <input id="googleScriptUrl" class="big-input" placeholder="https://script.google.com/..." />
+      <p style="font-size:13px;color:#9ca3af;margin-top:4px;">Saved locally · works offline without it</p>
     </section>
 
+    <!-- Link info -->
     <section class="card">
-      <label class="label" for="fibreType">Fibre Type</label>
-      <select id="fibreType" class="big-input">
-        <option value="" selected disabled>Select Fibre Type</option>
-        <option value="OS1/OS2">OS1/OS2 (Singlemode)</option>
-        <option value="OM1">OM1 (62.5/125µm)</option>
-        <option value="OM2">OM2 (50/125µm)</option>
-        <option value="OM3">OM3 (Laser-Optimized)</option>
-        <option value="OM4">OM4 (Laser-Optimized)</option>
-        <option value="OM5">OM5 (Wideband)</option>
-      </select>
-
+      <label class="label" for="cableId">Cable ID / Core #</label>
+      <input id="cableId" class="big-input" placeholder="PNL-01-A-001" autocomplete="off" />
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px;">
-        <div>
-          <label class="label" for="cableLength">Length (m)</label>
-          <input class="big-input" id="cableLength" type="number" placeholder="1500" />
-        </div>
-        <div>
-          <label class="label" for="connectorCount">Connectors</label>
-          <input class="big-input" id="connectorCount" type="number" placeholder="2" />
-        </div>
-        <div>
-          <label class="label" for="spliceCount">Splices</label>
-          <input class="big-input" id="spliceCount" type="number" placeholder="4" />
-        </div>
+        <div><label class="label" for="cableLength">Length (m)</label><input id="cableLength" class="big-input" type="number" placeholder="1500" /></div>
+        <div><label class="label" for="connectorCount">Connectors</label><input id="connectorCount" class="big-input" type="number" placeholder="2" /></div>
+        <div><label class="label" for="spliceCount">Splices</label><input id="spliceCount" class="big-input" type="number" placeholder="4" /></div>
+      </div>
+      <div style="margin-top:12px;">
+        <label class="label" for="fibreType">Fibre Type</label>
+        <select id="fibreType" class="big-input">
+          <option value="" disabled selected>Select Fibre Type</option>
+          <option value="OS1/OS2">OS1/OS2 (Singlemode)</option>
+          <option value="OM1">OM1 (62.5/125µm)</option>
+          <option value="OM2">OM2 (50/125µm)</option>
+          <option value="OM3">OM3 (Laser-Optimized)</option>
+          <option value="OM4">OM4 (Laser-Optimized)</option>
+          <option value="OM5">OM5 (Wideband)</option>
+        </select>
       </div>
     </section>
 
+    <!-- Wavelength test results -->
     <section class="card">
-      <label class="label">Results (dB Loss)</label>
+      <label class="label">Test Results (dB Loss)</label>
       <div id="results" style="display:grid;gap:12px;"></div>
     </section>
 
-    <div style="position:fixed;bottom:0;left:0;right:0;padding:16px;background:#0f172a;border-top:1px solid #1f2937;">
+    <!-- Saved tests list -->
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="font-size:18px;font-weight:600;">Saved Tests</h2>
+        <button id="downloadCsvBtn" class="btn btn-ghost" style="width:auto;padding:8px 16px;">Download CSV</button>
+      </div>
+      <div id="savedTests" style="margin-top:12px;font-size:14px;color:#9ca3af;">(No saved tests yet)</div>
+    </section>
+  </div>
+
+  <div class="footer">
+    <div style="display:grid;gap:10px;">
       <button id="saveBtn" class="btn btn-primary">Save & Next Core</button>
+      <button id="newBtn" class="btn btn-ghost">New Test</button>
     </div>
   </div>
 
   <script>
-    const el = id => document.getElementById(id);
+    const $ = id => document.getElementById(id);
     const ATT = {
-      'OS1/OS2': { 1310: 0.4, 1550: 0.25, 'default': 0.4 },
-      'OM1': { 850: 3.5, 1300: 1.5, 'default': 3.5 },
-      'OM2': { 850: 3.0, 1300: 1.0, 'default': 3.0 },
-      'OM3': { 850: 3.0, 1300: 1.0, 'default': 3.0 },
-      'OM4': { 850: 3.0, 1300: 1.0, 'default': 3.0 },
-      'OM5': { 850: 3.0, 953: 2.3, 'default': 3.0 }
+      'OS1/OS2': {1310:0.4,1550:0.25,default:0.4},
+      'OM1':{850:3.5,1300:1.5,default:3.5},
+      'OM2':{850:3.0,1300:1.0,default:3.0},
+      'OM3':{850:3.0,1300:1.0,default:3.0},
+      'OM4':{850:3.0,1300:1.0,default:3.0},
+      'OM5':{850:3.0,953:2.3,default:3.0}
     };
-    const CONNECTOR_LOSS = 0.75, SPLICE_LOSS = 0.3;
-    const parse = v => parseFloat((v || '0').replace(',', '.')) || 0;
-
-    function calcMax(type, len, conn, sp, wl){
-      const rate = ATT[type]?.[wl] ?? ATT[type]?.default;
-      if(!rate) return 0;
-      return (len/1000)*rate + (conn/2)*CONNECTOR_LOSS + sp*SPLICE_LOSS;
-    }
+    const CONNECTOR_LOSS=0.75,SPLICE_LOSS=0.3;
+    const parse=v=>parseFloat((v||'0').replace(',','.'))||0;
+    function calcMax(type,len,conn,sp,wl){const rate=ATT[type]?.[wl]??ATT[type]?.default;return rate?len/1000*rate+(conn/2)*CONNECTOR_LOSS+sp*SPLICE_LOSS:0;}
 
     function renderResults(){
-      const type = el('fibreType').value;
-      const len = parse(el('cableLength').value);
-      const conn = parse(el('connectorCount').value);
-      const sp = parse(el('spliceCount').value);
-      if(!type || !len) return;
-      const w1 = type==='OS1/OS2'?1310:850, w2 = type==='OS1/OS2'?1550:1300;
-      const max1 = calcMax(type,len,conn,sp,w1).toFixed(2);
-      const max2 = calcMax(type,len,conn,sp,w2).toFixed(2);
-      el('results').innerHTML = `
+      const type=$('fibreType').value,len=parse($('cableLength').value),conn=parse($('connectorCount').value),sp=parse($('spliceCount').value);
+      if(!type||!len){$('results').innerHTML='';return;}
+      const w1=type==='OS1/OS2'?1310:850,w2=type==='OS1/OS2'?1550:1300;
+      const max1=calcMax(type,len,conn,sp,w1).toFixed(2),max2=calcMax(type,len,conn,sp,w2).toFixed(2);
+      $('results').innerHTML=`
         <div>WL1 ${w1}nm Max ${max1} dB — <input class='big-input' id='loss1' placeholder='Enter dB'><span id='r1' class='badge'></span></div>
         <div>WL2 ${w2}nm Max ${max2} dB — <input class='big-input' id='loss2' placeholder='Enter dB'><span id='r2' class='badge'></span></div>`;
-      el('loss1').oninput = () => check(el('loss1'), max1, 'r1');
-      el('loss2').oninput = () => check(el('loss2'), max2, 'r2');
+      $('loss1').oninput=()=>check('loss1',max1,'r1');
+      $('loss2').oninput=()=>check('loss2',max2,'r2');
     }
 
-    function check(input, max, badgeId){
-      const v = parse(input.value);
-      const badge = el(badgeId);
-      badge.textContent = !input.value ? '' : (v<=max? 'PASS':'FAIL');
-      badge.className = 'badge ' + (v<=max?'pass':'fail');
+    function check(inputId,max,badgeId){
+      const v=parse($(inputId).value),b=$(badgeId);
+      if(!$(inputId).value){b.textContent='';b.className='badge';return;}
+      const pass=v<=max;b.textContent=pass?'PASS':'FAIL';b.className='badge '+(pass?'pass':'fail');
     }
 
     ['fibreType','cableLength','connectorCount','spliceCount'].forEach(id=>{
-      el(id).addEventListener('input', renderResults);
-      el(id).addEventListener('change', renderResults);
+      $(id).addEventListener('input',renderResults);
+      $(id).addEventListener('change',renderResults);
     });
 
-    el('saveBtn').onclick = ()=> alert('Saved locally (placeholder)');
+    const getTests=()=>JSON.parse(localStorage.getItem('fibreOpticTests')||'[]');
+    const saveTests=t=>localStorage.setItem('fibreOpticTests',JSON.stringify(t));
+
+    function refreshSaved(){
+      const tests=getTests(),list=$('savedTests');
+      if(!tests.length){list.textContent='(No saved tests yet)';return;}
+      list.innerHTML=tests.map(x=>`<div>${x.cableId||'(unnamed)'} — ${x.fibreType||''}</div>`).join('');
+    }
+
+    $('saveBtn').onclick=()=>{
+      const record={cableId:$('cableId').value,fibreType:$('fibreType').value,cableLength:$('cableLength').value,
+        connectorCount:$('connectorCount').value,spliceCount:$('spliceCount').value,loss1:$('loss1')?.value,loss2:$('loss2')?.value};
+      if(!record.cableId){alert('Enter Cable ID');return;}
+      const tests=getTests();const i=tests.findIndex(x=>x.cableId===record.cableId);
+      if(i>-1)tests[i]=record;else tests.push(record);saveTests(tests);refreshSaved();alert('Saved');
+    };
+
+    $('newBtn').onclick=()=>{document.querySelectorAll('.big-input,select').forEach(e=>e.value='');$('results').innerHTML='';};
+
+    $('downloadCsvBtn').onclick=()=>{
+      const tests=getTests();if(!tests.length){alert('No saved tests');return;}
+      const headers=['Cable ID','Fibre Type','Length (m)','Connectors','Splices','Loss1','Loss2'];
+      const rows=[headers.join(',')].concat(tests.map(x=>[x.cableId,x.fibreType,x.cableLength,x.connectorCount,x.spliceCount,x.loss1,x.loss2].join(',')));
+      const blob=new Blob([rows.join('\\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='fibre_tests.csv';a.click();
+    };
+
+    window.addEventListener('load',refreshSaved);
+  </script>
+
+  <!-- ✅ Service worker registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(()=>{});
+      });
+    }
   </script>
 </body>
 </html>
