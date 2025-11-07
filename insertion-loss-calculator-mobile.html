@@ -374,34 +374,56 @@
     return 'pass';
   };
 
-  const renderSavedTests = () => {
-    const tests = getTests();
-    formEls.savedTestsList.innerHTML = '';
-    formEls.noSavedTests.style.display = tests.length ? 'none' : 'block';
-    tests.forEach(test => {
-      const status = getTestStatus(test);
-      const dotCls = status==='pass' ? 'pass' : status==='fail' ? 'fail' : status==='incomplete' ? 'incomplete' : 'unknown';
-      const labelLine = [
-        test.cableId || '',
-        test.fibreType ? `· ${test.fibreType}` : '',
-        test.customerName ? `· ${test.customerName}` : '',
-        test.siteName ? `· ${test.siteName}` : ''
-      ].join(' ').trim();
-      const div = document.createElement('div');
-      div.className = 'list-item';
-      div.innerHTML = `
-        <div class="inline" style="min-width:0;">
-          <div class="dot ${dotCls}"></div>
-          <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${labelLine}">${labelLine}</div>
+  // Show only tests for the current Site Name (Job ID)
+// and list "Cable ID · Fibre ID/Number" (no customer/site in the row)
+const renderSavedTests = () => {
+  const all = getTests();
+
+  // Filter by the current Site Name field
+  const currentSite = (formEls.siteName.value || "").trim().toLowerCase();
+  const tests = currentSite
+    ? all.filter(t => (t.siteName || "").trim().toLowerCase() === currentSite)
+    : all;
+
+  formEls.savedTestsList.innerHTML = "";
+
+  // Empty-state text depends on whether a site is entered
+  formEls.noSavedTests.textContent = currentSite
+    ? "No tests saved for this site."
+    : "No tests saved.";
+  formEls.noSavedTests.style.display = tests.length ? "none" : "block";
+
+  tests.forEach(test => {
+    const status = getTestStatus(test);
+    const dotCls =
+      status === "pass" ? "pass" :
+      status === "fail" ? "fail" :
+      status === "incomplete" ? "incomplete" : "unknown";
+
+    // Row label: Cable ID and Fibre ID/Number only
+    const labelLine = [
+      test.cableId || "",
+      test.fibreId ? `· ${test.fibreId}` : ""
+    ].join(" ").trim();
+
+    const div = document.createElement("div");
+    div.className = "list-item";
+    div.innerHTML = `
+      <div class="inline" style="min-width:0;">
+        <div class="dot ${dotCls}"></div>
+        <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${labelLine}">
+          ${labelLine}
         </div>
-        <div class="inline" style="flex-shrink:0;">
-          <button class="btn" style="min-width:84px;" data-id="${test.cableId}" data-action="load">Load</button>
-          <button class="btn btn-success" style="min-width:84px;" data-id="${test.cableId}" data-action="export">Export</button>
-          <button class="btn btn-danger" style="min-width:84px;" data-id="${test.cableId}" data-action="delete">Delete</button>
-        </div>`;
-      formEls.savedTestsList.appendChild(div);
-    });
-  };
+      </div>
+      <div class="inline" style="flex-shrink:0;">
+        <button class="btn" style="min-width:84px;" data-id="${test.cableId}" data-action="load">Load</button>
+        <button class="btn btn-success" style="min-width:84px;" data-id="${test.cableId}" data-action="export">Export</button>
+        <button class="btn btn-danger" style="min-width:84px;" data-id="${test.cableId}" data-action="delete">Delete</button>
+      </div>`;
+    formEls.savedTestsList.appendChild(div);
+  });
+};
+
 
   const autoIncrementCableId = () => {
     const id = (formEls.cableId.value || '').trim();
