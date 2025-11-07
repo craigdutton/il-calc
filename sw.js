@@ -1,5 +1,5 @@
 // Simple offline-first service worker for IL Calculator
-const CACHE_NAME = "il-mobile-v11";
+const CACHE_NAME = "il-mobile-v12";
 const APP_SHELL = [
   "./",
   "./index.html",
