@@ -1,22 +1,535 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Insertion Loss Calculator — Mobile</title>
-
-  <!-- PWA bits -->
-  <link rel="manifest" href="./manifest.webmanifest">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-192.png">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Insertion Loss Calculator — Standalone Mobile</title>
+<meta name="theme-color" content="#4f46e5" />
+<style>
+  :root { --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-top: env(safe-area-inset-top, 0px); }
+  body { font-family: -apple-system, system-ui, Segoe UI, Roboto, Inter, Arial, sans-serif; background:#f7f8fb; color:#111827; margin:0; padding-bottom:calc(168px + var(--safe-bottom)); }
+  .container { max-width: 720px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  .sub { color:#6b7280; font-size: 13px; margin: 0 0 8px; }
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+  .section-title { font-size: 16px; font-weight: 700; color:#374151; margin: 6px 0 10px; }
+  label { display:block; font-size: 14px; color:#374151; margin: 2px 0 6px; }
+  input, select { width:100%; min-height:64px; font-size:18px; padding:16px 14px; border-radius:14px; border:1px solid #d1d5db; background:#fff; color:#111827; box-sizing:border-box; }
+  input:read-only { background:#f3f4f6; color:#374151; }
+  input::placeholder { color:#9ca3af; }
+  .row { display:grid; gap:10px; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .inline { display:flex; gap:10px; align-items:center; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:64px; font-size:18px; font-weight:700; border-radius:16px; border:1px solid #e5e7eb; background:#fff; color:#111827; box-shadow: 0 1px 2px rgba(0,0,0,.03); cursor:pointer; }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background:#4f46e5; border-color:#4f46e5; color:#fff; }
+  .btn-danger { background:#fff; border-color:#fecaca; color:#b91c1c; }
+  .btn-success { background:#fff; border-color:#bbf7d0; color:#047857; }
+  .footer { position:fixed; left:0; right:0; bottom:0; background:#fffffffa; border-top:1px solid #e5e7eb; backdrop-filter: blur(6px); padding: 12px 12px calc(12px + var(--safe-bottom)); }
+  .footer-inner { max-width: 720px; margin:0 auto; display:grid; gap:10px; grid-template-columns: 1fr; }
+  .result-badge { flex-shrink:0; min-width:70px; text-align:center; font-size:13px; font-weight:800; border-radius:999px; padding:6px 10px; }
+  .pass { color:#065f46; background:#d1fae5; border:1px solid #10b981; }
+  .fail { color:#7f1d1d; background:#fee2e2; border:1px solid #ef4444; }
+  .note { color:#6b7280; font-size:12px; }
+  .muted { color:#6b7280; }
+  .list-item { display:flex; align-items:center; justify-content:space-between; gap:10px; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px; }
+  .dot { width:10px; height:10px; border-radius:999px; }
+  .dot.pass { background:#10b981; } .dot.fail { background:#ef4444; } .dot.incomplete { background:#f59e0b; } .dot.unknown { background:#9ca3af; }
+  .toast { position: fixed; left: 12px; right: 12px; bottom: calc(88px + var(--safe-bottom)); z-index: 60; display:none; }
+  .toast.show { display:block; }
+  .toast > div { margin: 0 auto; max-width: 520px; background:#111827; color:#fff; font-size:14px; border-radius:14px; padding:10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+</style>
 </head>
 <body>
-  <noscript>Please enable JavaScript.</noscript>
-  <script>
-    // Send users to your main app file
-    location.replace('./insertion-loss-calculator-mobile.html');
-  </script>
+  <div class="container">
+    <header>
+      <h1>Insertion Loss Calculator</h1>
+      <p class="sub">Standalone mobile build · bigger touch targets · same behavior</p>
+    </header>
+
+    <!-- Export target URL (Apps Script) -->
+    <section class="card" style="margin-bottom:12px;">
+      <div class="row">
+        <div>
+          <label for="googleScriptUrl">Google Sheets Web App URL (for Online Export)</label>
+          <input type="url" id="googleScriptUrl" placeholder="Paste your deployed Google Apps Script URL here" inputmode="url" autocomplete="off" />
+          <div class="note" style="margin-top:6px;">Saved to this device. You can export later when online.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Link characteristics -->
+    <section class="card" style="margin-bottom:12px;">
+      <div class="section-title">Link</div>
+      <div class="row">
+        <div>
+          <label for="cableId">Cable ID / Core #</label>
+          <input type="text" id="cableId" placeholder="PNL-01-A-001" autocomplete="off" autocapitalize="characters" />
+          <div id="cableId-warning" class="note" style="min-height:18px;"></div>
+        </div>
+
+        <div>
+          <label for="fibreType">Fibre Type</label>
+          <select id="fibreType">
+            <option value="" disabled selected>Select Fibre Type</option>
+            <option value="OS1/OS2">OS1/OS2 (Singlemode)</option>
+            <option value="OM1">OM1 (62.5/125µm)</option>
+            <option value="OM2">OM2 (50/125µm)</option>
+            <option value="OM3">OM3 (50/125µm Laser-Optimized)</option>
+            <option value="OM4">OM4 (50/125µm Laser-Optimized)</option>
+            <option value="OM5">OM5 (Wideband Multimode)</option>
+          </select>
+        </div>
+
+        <div class="row cols-3">
+          <div>
+            <label for="cableLength">Length (m)</label>
+            <input id="cableLength" placeholder="1500" inputmode="numeric" pattern="[0-9]*" autocomplete="off" />
+          </div>
+          <div>
+            <label for="connectorCount">Connectors</label>
+            <input id="connectorCount" placeholder="2" inputmode="numeric" pattern="[0-9]*" autocomplete="off" />
+          </div>
+          <div>
+            <label for="spliceCount">Splices</label>
+            <input id="spliceCount" placeholder="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Test results -->
+    <section class="card" style="margin-bottom:14px;">
+      <div class="section-title">Test Results (dB Loss)</div>
+      <div class="row">
+        <div class="card" style="padding:12px;">
+          <div class="inline" style="justify-content:space-between; margin-bottom:6px;">
+            <div class="inline">
+              <span class="note" style="margin-right:8px;">Wavelength 1:</span>
+              <input id="wavelength1" readonly style="width:90px; min-height:44px; text-align:center;" />
+            </div>
+            <span id="maxLossDisplay1" class="note"></span>
+          </div>
+          <div class="row">
+            <div class="inline">
+              <label for="lossAB1" class="note" style="min-width:82px; margin:0;">A ➜ B</label>
+              <input id="lossAB1" placeholder="dB" inputmode="decimal" />
+              <span id="resultAB1" class="result-badge"></span>
+            </div>
+            <div class="inline">
+              <label for="lossBA1" class="note" style="min-width:82px; margin:0;">B ➜ A</label>
+              <input id="lossBA1" placeholder="dB" inputmode="decimal" />
+              <span id="resultBA1" class="result-badge"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:12px;">
+          <div class="inline" style="justify-content:space-between; margin-bottom:6px;">
+            <div class="inline">
+              <span class="note" style="margin-right:8px;">Wavelength 2:</span>
+              <input id="wavelength2" readonly style="width:90px; min-height:44px; text-align:center;" />
+            </div>
+            <span id="maxLossDisplay2" class="note"></span>
+          </div>
+          <div class="row">
+            <div class="inline">
+              <label for="lossAB2" class="note" style="min-width:82px; margin:0;">A ➜ B</label>
+              <input id="lossAB2" placeholder="dB" inputmode="decimal" />
+              <span id="resultAB2" class="result-badge"></span>
+            </div>
+            <div class="inline">
+              <label for="lossBA2" class="note" style="min-width:82px; margin:0;">B ➜ A</label>
+              <input id="lossBA2" placeholder="dB" inputmode="decimal" />
+              <span id="resultBA2" class="result-badge"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Saved tests -->
+    <section class="card" style="margin-bottom:42px;">
+      <div class="inline" style="justify-content:space-between; margin-bottom:6px;">
+        <div class="section-title" style="margin:0;">Saved Tests</div>
+        <div class="inline" style="gap:8px;">
+          <button id="download-csv-btn" class="btn">Download CSV</button>
+          <button id="export-all-btn" class="btn">Export All</button>
+        </div>
+      </div>
+      <div id="saved-tests-list" class="row"></div>
+      <div id="no-saved-tests" class="muted">No tests saved.</div>
+      <div id="export-all-status" class="note" style="margin-top:6px;"></div>
+    </section>
+  </div>
+
+  <!-- Sticky footer -->
+  <div class="footer">
+    <div class="footer-inner">
+      <button id="save-progress-btn" class="btn btn-primary">Save & Next Core</button>
+      <button id="quick-new-btn" class="btn">New</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"><div id="toast-text">Saved</div></div>
+
+<script>
+  // --- Storage helpers
+  const getTests = () => JSON.parse(localStorage.getItem('fibreOpticTests') || '[]');
+  const saveTests = (tests) => localStorage.setItem('fibreOpticTests', JSON.stringify(tests));
+
+  // --- Elements
+  const formEls = {
+    fibreType: document.getElementById('fibreType'),
+    cableId: document.getElementById('cableId'),
+    cableLength: document.getElementById('cableLength'),
+    connectorCount: document.getElementById('connectorCount'),
+    spliceCount: document.getElementById('spliceCount'),
+    wavelength1: document.getElementById('wavelength1'),
+    wavelength2: document.getElementById('wavelength2'),
+    lossAB1: document.getElementById('lossAB1'),
+    lossBA1: document.getElementById('lossBA1'),
+    lossAB2: document.getElementById('lossAB2'),
+    lossBA2: document.getElementById('lossBA2'),
+    resultAB1: document.getElementById('resultAB1'),
+    resultBA1: document.getElementById('resultBA1'),
+    resultAB2: document.getElementById('resultAB2'),
+    resultBA2: document.getElementById('resultBA2'),
+    maxLossDisplay1: document.getElementById('maxLossDisplay1'),
+    maxLossDisplay2: document.getElementById('maxLossDisplay2'),
+    googleScriptUrl: document.getElementById('googleScriptUrl'),
+    savedTestsList: document.getElementById('saved-tests-list'),
+    noSavedTests: document.getElementById('no-saved-tests'),
+    exportAllStatus: document.getElementById('export-all-status'),
+    cableIdWarning: document.getElementById('cableId-warning'),
+    saveBtn: document.getElementById('save-progress-btn'),
+    newBtn: document.getElementById('quick-new-btn'),
+    exportAllBtn: document.getElementById('export-all-btn'),
+    downloadCsvBtn: document.getElementById('download-csv-btn'),
+    toast: document.getElementById('toast'),
+    toastText: document.getElementById('toast-text')
+  };
+
+  // --- Constants (same as original)
+  const ATTENUATION_RATES = {
+    'OS1/OS2': { 1310: 0.4, 1550: 0.25, 'default': 0.4 },
+    'OM1': { 850: 3.5, 1300: 1.5, 'default': 3.5 },
+    'OM2': { 850: 3.0, 1300: 1.0, 'default': 3.0 },
+    'OM3': { 850: 3.0, 1300: 1.0, 'default': 3.0 },
+    'OM4': { 850: 3.0, 1300: 1.0, 'default': 3.0 },
+    'OM5': { 850: 3.0, 953: 2.3, 'default': 3.0 }
+  };
+  const CONNECTOR_LOSS = 0.75;
+  const SPLICE_LOSS = 0.3;
+
+  // --- Utils
+  const parseDec = (v) => { if (v == null) return NaN; return parseFloat(String(v).replace(',', '.')); };
+  const showToast = (msg) => {
+    formEls.toastText.textContent = msg;
+    formEls.toast.classList.add('show');
+    if ('vibrate' in navigator) navigator.vibrate(15);
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => formEls.toast.classList.remove('show'), 1600);
+  };
+
+  // --- Max loss calc
+  const calculateMaxLoss = (data, wavelength) => {
+    const rate = ATTENUATION_RATES[data.fibreType]?.[wavelength] || ATTENUATION_RATES[data.fibreType]?.default;
+    if (!data.fibreType || !rate || !data.cableLength || !data.connectorCount || !data.spliceCount) return null;
+    const km = parseDec(data.cableLength) / 1000;
+    const cableLoss = km * rate;
+    const connectorLoss = (parseDec(data.connectorCount) / 2) * CONNECTOR_LOSS;
+    const spliceLoss = parseDec(data.spliceCount) * SPLICE_LOSS;
+    return connectorLoss + spliceLoss + cableLoss;
+  };
+
+  // --- Enable results when link filled
+  const checkLinkCharacteristics = () => {
+    const allFilled = [formEls.cableId.value, formEls.fibreType.value, formEls.cableLength.value, formEls.connectorCount.value, formEls.spliceCount.value]
+      .every(v => v && String(v).trim() !== '');
+    // no explicit disabling in this standalone; we just compute when available
+    return allFilled;
+  };
+
+  // --- PASS/FAIL per input (instant)
+  const handleIndividualLossInput = (input) => {
+    const resultBadge = document.getElementById(input.id.replace('loss', 'result'));
+    const isWl1 = input.id.includes('1');
+    const wlEl = isWl1 ? formEls.wavelength1 : formEls.wavelength2;
+    const maxLossDisplay = isWl1 ? formEls.maxLossDisplay1 : formEls.maxLossDisplay2;
+
+    const formData = {
+      fibreType: formEls.fibreType.value,
+      cableLength: formEls.cableLength.value,
+      connectorCount: formEls.connectorCount.value,
+      spliceCount: formEls.spliceCount.value
+    };
+    const wavelength = parseDec(wlEl.value);
+    const maxLoss = calculateMaxLoss(formData, wavelength);
+
+    if (maxLoss !== null) {
+      maxLossDisplay.textContent = `Max: ${maxLoss.toFixed(2)} dB`;
+    } else {
+      maxLossDisplay.textContent = '';
+      resultBadge.className = 'result-badge';
+      resultBadge.textContent = '';
+      return;
+    }
+
+    const value = parseDec(input.value);
+    if (Number.isNaN(value)) {
+      resultBadge.className = 'result-badge';
+      resultBadge.textContent = '';
+    } else {
+      const margin = (maxLoss - value).toFixed(2);
+      if (value <= maxLoss) {
+        resultBadge.textContent = 'PASS';
+        resultBadge.title = `Margin +${margin} dB`;
+        resultBadge.className = 'result-badge pass';
+      } else {
+        resultBadge.textContent = 'FAIL';
+        resultBadge.title = `Over by ${(value - maxLoss).toFixed(2)} dB`;
+        resultBadge.className = 'result-badge fail';
+      }
+    }
+  };
+
+  // --- Saved tests status
+  const getTestStatus = (t) => {
+    const required = ['lossAB1','lossBA1','lossAB2','lossBA2'];
+    if (required.some(k => !t[k] || t[k] === '')) return 'incomplete';
+    const data = {...t};
+    for (const k in data) { if (k !== 'fibreType' && k !== 'cableId' && data[k]) data[k] = parseDec(data[k]); }
+    const max1 = calculateMaxLoss(data, data.wavelength1);
+    const max2 = calculateMaxLoss(data, data.wavelength2);
+    if (max1 === null || max2 === null) return 'unknown';
+    if (data.lossAB1 > max1 || data.lossBA1 > max1 || data.lossAB2 > max2 || data.lossBA2 > max2) return 'fail';
+    return 'pass';
+  };
+
+  const renderSavedTests = () => {
+    const tests = getTests();
+    formEls.savedTestsList.innerHTML = '';
+    formEls.noSavedTests.style.display = tests.length ? 'none' : 'block';
+    tests.forEach(test => {
+      const status = getTestStatus(test);
+      const dotCls = status==='pass' ? 'pass' : status==='fail' ? 'fail' : status==='incomplete' ? 'incomplete' : 'unknown';
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      div.innerHTML = `
+        <div class="inline" style="min-width:0;">
+          <div class="dot ${dotCls}"></div>
+          <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${test.cableId}">${test.cableId}</div>
+          <div class="note" style="margin-left:8px;">${test.fibreType || ''}</div>
+        </div>
+        <div class="inline" style="flex-shrink:0;">
+          <button class="btn" style="min-width:84px;" data-id="${test.cableId}" data-action="load">Load</button>
+          <button class="btn btn-success" style="min-width:84px;" data-id="${test.cableId}" data-action="export">Export</button>
+          <button class="btn btn-danger" style="min-width:84px;" data-id="${test.cableId}" data-action="delete">Delete</button>
+        </div>`;
+      formEls.savedTestsList.appendChild(div);
+    });
+  };
+
+  const autoIncrementCableId = () => {
+    const id = (formEls.cableId.value || '').trim();
+    const match = id.match(/(.*?)(\d+)(\D*)$/);
+    if (!match) return id;
+    const prefix = match[1], num = match[2], suffix = match[3] || '';
+    const next = String(parseInt(num, 10) + 1).padStart(num.length, '0');
+    return prefix + next + suffix;
+  };
+
+  const prepareNextCore = () => {
+    const keep = {
+      fibreType: formEls.fibreType.value,
+      cableLength: formEls.cableLength.value,
+      connectorCount: formEls.connectorCount.value,
+      spliceCount: formEls.spliceCount.value
+    };
+    const nextId = autoIncrementCableId();
+    // clear all
+    ['cableId','lossAB1','lossBA1','lossAB2','lossBA2'].forEach(id => formEls[id].value = '');
+    // restore characteristics
+    formEls.fibreType.value = keep.fibreType;
+    formEls.cableLength.value = keep.cableLength;
+    formEls.connectorCount.value = keep.connectorCount;
+    formEls.spliceCount.value = keep.spliceCount;
+    if (nextId) formEls.cableId.value = nextId;
+    ['resultAB1','resultBA1','resultAB2','resultBA2'].forEach(id => {
+      const el = formEls[id]; el.className = 'result-badge'; el.textContent = ''; el.removeAttribute('title');
+    });
+    checkLinkCharacteristics();
+    formEls.cableId.focus();
+  };
+
+  const saveCurrent = () => {
+    const data = {
+      cableId: formEls.cableId.value,
+      fibreType: formEls.fibreType.value,
+      cableLength: formEls.cableLength.value,
+      connectorCount: formEls.connectorCount.value,
+      spliceCount: formEls.spliceCount.value,
+      wavelength1: formEls.wavelength1.value,
+      wavelength2: formEls.wavelength2.value,
+      lossAB1: formEls.lossAB1.value,
+      lossBA1: formEls.lossBA1.value,
+      lossAB2: formEls.lossAB2.value,
+      lossBA2: formEls.lossBA2.value
+    };
+    if (!data.cableId) { showToast('Enter a Cable ID'); return; }
+    const tests = getTests();
+    const isDuplicate = tests.some(t => t.cableId === data.cableId);
+    if (isDuplicate) { showToast('Cable ID already exists'); return; }
+    tests.push(data);
+    saveTests(tests);
+    renderSavedTests();
+    showToast(`Saved: ${data.cableId}`);
+    if ('vibrate' in navigator) navigator.vibrate(20);
+    prepareNextCore();
+  };
+
+  const exportSingleTest = async (cableId) => {
+    const scriptUrl = formEls.googleScriptUrl.value;
+    const testData = getTests().find(t => t.cableId === cableId);
+    if (!scriptUrl || !testData) return { success:false, error:'Missing URL or test' };
+    const payload = (()=>{
+      const d = {...testData};
+      const wl1 = parseDec(d.wavelength1), wl2 = parseDec(d.wavelength2);
+      const max1 = calculateMaxLoss(d, wl1);
+      const max2 = calculateMaxLoss(d, wl2);
+      const statusOf = (loss, max) => (Number.isNaN(parseDec(loss)) ? 'Incomplete' : (max==null ? '' : (parseDec(loss) <= max ? 'Pass' : 'Fail')));
+      return {
+        timestamp: new Date().toISOString(),
+        cableId: d.cableId, fibreType: d.fibreType, length: d.cableLength, connectors: d.connectorCount, splices: d.spliceCount,
+        wl1: d.wavelength1, maxLoss1: max1!=null ? max1.toFixed(2) : 'N/A',
+        lossAB1: d.lossAB1 ?? '', statusAB1: statusOf(d.lossAB1, max1),
+        lossBA1: d.lossBA1 ?? '', statusBA1: statusOf(d.lossBA1, max1),
+        wl2: d.wavelength2, maxLoss2: max2!=null ? max2.toFixed(2) : 'N/A',
+        lossAB2: d.lossAB2 ?? '', statusAB2: statusOf(d.lossAB2, max2),
+        lossBA2: d.lossBA2 ?? '', statusBA2: statusOf(d.lossBA2, max2),
+        finalStatus: getTestStatus(d)
+      };
+    })();
+    try {
+      const res = await fetch(scriptUrl, { method:'POST', mode:'cors', cache:'no-cache', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      const json = await res.json();
+      if (json.result === 'success') return { success:true };
+      return { success:false, error: json.message || 'Script error' };
+    } catch (e) {
+      return { success:false, error: e.message };
+    }
+  };
+
+  const handleSavedAction = async (e) => {
+    const btn = e.target.closest('button[data-action]'); if (!btn) return;
+    const id = btn.getAttribute('data-id'); const action = btn.getAttribute('data-action');
+    if (action === 'load') {
+      const t = getTests().find(x => x.cableId === id); if (!t) return;
+      Object.entries(t).forEach(([k,v]) => { if (formEls[k]) formEls[k].value = v; });
+      ['lossAB1','lossBA1','lossAB2','lossBA2'].forEach(i => { if (formEls[i].value) handleIndividualLossInput(formEls[i]); });
+      checkLinkCharacteristics(); showToast(`Loaded: ${id}`);
+    } else if (action === 'delete') {
+      if (!confirm(`Delete ${id}?`)) return;
+      saveTests(getTests().filter(x => x.cableId !== id)); renderSavedTests(); showToast(`Deleted: ${id}`);
+    } else if (action === 'export') {
+      btn.disabled = true; btn.textContent = 'Exporting…';
+      const res = await exportSingleTest(id);
+      btn.textContent = res.success ? 'Exported' : 'Error'; setTimeout(()=>{ btn.textContent = 'Export'; btn.disabled = false; }, 1800);
+      showToast(res.success ? 'Exported' : ('Export error: ' + (res.error || '')));
+    }
+  };
+
+  const handleExportAll = async () => {
+    const url = formEls.googleScriptUrl.value; if (!url) { showToast('Enter Google Script URL'); return; }
+    const tests = getTests(); if (!tests.length) { showToast('No saved tests'); return; }
+    formEls.exportAllBtn.disabled = true;
+    let ok=0;
+    for (let i=0;i<tests.length;i++) {
+      formEls.exportAllStatus.textContent = `Exporting ${i+1} / ${tests.length}…`;
+      const r = await exportSingleTest(tests[i].cableId); if (r.success) ok++;
+      await new Promise(r => setTimeout(r, 50));
+    }
+    formEls.exportAllStatus.textContent = `Exported ${ok} of ${tests.length}.`;
+    formEls.exportAllBtn.disabled = false;
+    showToast('Export finished');
+  };
+
+  const handleDownloadCSV = () => {
+    const tests = getTests(); if (!tests.length) { showToast('No saved tests'); return; }
+    const headers = [
+      "Timestamp","Cable ID","Fibre Type","Length (m)","Connectors","Splices",
+      "Wavelength 1 (nm)","Max Loss WL1 (dB)","Loss A->B WL1 (dB)","Status A->B WL1",
+      "Loss B->A WL1 (dB)","Status B->A WL1","Wavelength 2 (nm)","Max Loss WL2 (dB)",
+      "Loss A->B WL2 (dB)","Status A->B WL2","Loss B->A WL2 (dB)","Status B->A WL2",
+      "Final Status"
+    ];
+    const rows = [headers.join(',')];
+    tests.forEach(t => {
+      const data = {...t};
+      const wl1 = parseDec(t.wavelength1), wl2 = parseDec(t.wavelength2);
+      const max1 = calculateMaxLoss(t, wl1), max2 = calculateMaxLoss(t, wl2);
+      const statusOf = (loss, max) => (Number.isNaN(parseDec(loss)) ? 'Incomplete' : (max==null ? '' : (parseDec(loss) <= max ? 'Pass' : 'Fail')));
+      const vals = [
+        new Date().toISOString(),
+        data.cableId, data.fibreType, data.cableLength, data.connectorCount, data.spliceCount,
+        data.wavelength1, (max1!=null?max1.toFixed(2):'N/A'),
+        data.lossAB1 ?? '', statusOf(data.lossAB1, max1),
+        data.lossBA1 ?? '', statusOf(data.lossBA1, max1),
+        data.wavelength2, (max2!=null?max2.toFixed(2):'N/A'),
+        data.lossAB2 ?? '', statusOf(data.lossAB2, max2),
+        data.lossBA2 ?? '', statusOf(data.lossBA2, max2),
+        getTestStatus(t)
+      ];
+      rows.push(vals.map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+    });
+    const csv = rows.join('\n');
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `fibre_test_export_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    showToast('CSV downloaded');
+  };
+
+  // --- Listeners
+  ['lossAB1','lossBA1','lossAB2','lossBA2'].forEach(id => {
+    formEls[id].addEventListener('input', (e) => handleIndividualLossInput(e.target));
+    formEls[id].addEventListener('change', (e) => handleIndividualLossInput(e.target));
+  });
+  ['cableId','fibreType','cableLength','connectorCount','spliceCount'].forEach(id => {
+    formEls[id].addEventListener('input', checkLinkCharacteristics);
+  });
+
+  // Fibre type sets wavelengths (and on input for mobile)
+  const setWavelengthsForFibre = () => {
+    const t = formEls.fibreType.value;
+    formEls.wavelength1.value = (t === 'OS1/OS2') ? '1310' : '850';
+    formEls.wavelength2.value = (t === 'OS1/OS2') ? '1550' : '1300';
+    // Re-evaluate badges when fibre changes
+    ['lossAB1','lossBA1','lossAB2','lossBA2'].forEach(id => {
+      if (formEls[id].value) handleIndividualLossInput(formEls[id]);
+    });
+  };
+  formEls.fibreType.addEventListener('change', setWavelengthsForFibre);
+  formEls.fibreType.addEventListener('input', setWavelengthsForFibre);
+
+  // Buttons
+  formEls.saveBtn.addEventListener('click', saveCurrent);
+  formEls.newBtn.addEventListener('click', prepareNextCore);
+  formEls.exportAllBtn.addEventListener('click', handleExportAll);
+  formEls.downloadCsvBtn.addEventListener('click', handleDownloadCSV);
+  formEls.savedTestsList.addEventListener('click', handleSavedAction);
+
+  // Persist URL
+  formEls.googleScriptUrl.value = localStorage.getItem('googleScriptUrl') || '';
+  formEls.googleScriptUrl.addEventListener('change', () => localStorage.setItem('googleScriptUrl', formEls.googleScriptUrl.value));
+
+  // Init
+  renderSavedTests();
+</script>
 </body>
 </html>
