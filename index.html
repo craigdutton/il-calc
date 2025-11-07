@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="manifest" href="./manifest.webmanifest" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<link rel="apple-touch-icon" href="icons/icon-192.png" />
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Insertion Loss Calculator — Standalone Mobile</title>
@@ -52,6 +48,27 @@
       <p class="sub">Standalone mobile build · bigger touch targets · same behavior</p>
     </header>
 
+    <!-- Customer section -->
+    <section class="card" style="margin-bottom:12px;">
+      <div class="section-title">Customer</div>
+      <div class="row cols-2">
+        <div>
+          <label for="testDate">Test Date</label>
+          <input type="datetime-local" id="testDate" />
+        </div>
+        <div>
+          <label for="customerName">Customer Name</label>
+          <input type="text" id="customerName" placeholder="Customer Ltd." autocomplete="name" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div>
+          <label for="siteName">Site Name</label>
+          <input type="text" id="siteName" placeholder="Data Hall A" autocomplete="off" />
+        </div>
+      </div>
+    </section>
+
     <!-- Export target URL (Apps Script) -->
     <section class="card" style="margin-bottom:12px;">
       <div class="row">
@@ -67,10 +84,27 @@
     <section class="card" style="margin-bottom:12px;">
       <div class="section-title">Link</div>
       <div class="row">
-        <div>
-          <label for="cableId">Cable ID / Core #</label>
-          <input type="text" id="cableId" placeholder="PNL-01-A-001" autocomplete="off" autocapitalize="characters" />
-          <div id="cableId-warning" class="note" style="min-height:18px;"></div>
+        <div class="row cols-2">
+          <div>
+            <label for="cableId">Cable ID</label>
+            <input type="text" id="cableId" placeholder="PNL-01-A-001" autocomplete="off" autocapitalize="characters" />
+            <div id="cableId-warning" class="note" style="min-height:18px;"></div>
+          </div>
+          <div>
+            <label for="fibreId">Fibre ID/Number</label>
+            <input type="text" id="fibreId" placeholder="001" inputmode="numeric" autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="row cols-2">
+          <div>
+            <label for="locationA">Location A</label>
+            <input type="text" id="locationA" placeholder="Rack A1" autocomplete="off" />
+          </div>
+          <div>
+            <label for="locationB">Location B</label>
+            <input type="text" id="locationB" placeholder="Rack B1" autocomplete="off" />
+          </div>
         </div>
 
         <div>
@@ -186,11 +220,20 @@
 
   // --- Elements
   const formEls = {
+    // Customer
+    testDate: document.getElementById('testDate'),
+    customerName: document.getElementById('customerName'),
+    siteName: document.getElementById('siteName'),
+    // Link
     fibreType: document.getElementById('fibreType'),
     cableId: document.getElementById('cableId'),
+    fibreId: document.getElementById('fibreId'),
+    locationA: document.getElementById('locationA'),
+    locationB: document.getElementById('locationB'),
     cableLength: document.getElementById('cableLength'),
     connectorCount: document.getElementById('connectorCount'),
     spliceCount: document.getElementById('spliceCount'),
+    // Results
     wavelength1: document.getElementById('wavelength1'),
     wavelength2: document.getElementById('wavelength2'),
     lossAB1: document.getElementById('lossAB1'),
@@ -203,6 +246,7 @@
     resultBA2: document.getElementById('resultBA2'),
     maxLossDisplay1: document.getElementById('maxLossDisplay1'),
     maxLossDisplay2: document.getElementById('maxLossDisplay2'),
+    // Save/Export
     googleScriptUrl: document.getElementById('googleScriptUrl'),
     savedTestsList: document.getElementById('saved-tests-list'),
     noSavedTests: document.getElementById('no-saved-tests'),
@@ -215,6 +259,14 @@
     toast: document.getElementById('toast'),
     toastText: document.getElementById('toast-text')
   };
+
+  // Prefill test date to now
+  try {
+    const now = new Date();
+    const pad = (n)=>String(n).padStart(2,'0');
+    const local = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes());
+    if (!formEls.testDate.value) formEls.testDate.value = local;
+  } catch {}
 
   // --- Constants (same as original)
   const ATTENUATION_RATES = {
@@ -249,14 +301,6 @@
     return connectorLoss + spliceLoss + cableLoss;
   };
 
-  // --- Enable results when link filled
-  const checkLinkCharacteristics = () => {
-    const allFilled = [formEls.cableId.value, formEls.fibreType.value, formEls.cableLength.value, formEls.connectorCount.value, formEls.spliceCount.value]
-      .every(v => v && String(v).trim() !== '');
-    // no explicit disabling in this standalone; we just compute when available
-    return allFilled;
-  };
-
   // --- PASS/FAIL per input (instant)
   const handleIndividualLossInput = (input) => {
     const resultBadge = document.getElementById(input.id.replace('loss', 'result'));
@@ -274,7 +318,7 @@
     const maxLoss = calculateMaxLoss(formData, wavelength);
 
     if (maxLoss !== null) {
-      maxLossDisplay.textContent = `Max: ${maxLoss.toFixed(2)} dB`;
+      maxLossDisplay.textContent = `Max: ${maxLoss.toFixed(2)} dB`; 
     } else {
       maxLossDisplay.textContent = '';
       resultBadge.className = 'result-badge';
@@ -322,11 +366,16 @@
       const dotCls = status==='pass' ? 'pass' : status==='fail' ? 'fail' : status==='incomplete' ? 'incomplete' : 'unknown';
       const div = document.createElement('div');
       div.className = 'list-item';
+      const labelLine = [
+        test.cableId || '',
+        test.fibreType ? `· ${test.fibreType}` : '',
+        test.customerName ? `· ${test.customerName}` : '',
+        test.siteName ? `· ${test.siteName}` : ''
+      ].join(' ').trim();
       div.innerHTML = `
         <div class="inline" style="min-width:0;">
           <div class="dot ${dotCls}"></div>
-          <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${test.cableId}">${test.cableId}</div>
-          <div class="note" style="margin-left:8px;">${test.fibreType || ''}</div>
+          <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${labelLine}">${labelLine}</div>
         </div>
         <div class="inline" style="flex-shrink:0;">
           <button class="btn" style="min-width:84px;" data-id="${test.cableId}" data-action="load">Load</button>
@@ -339,7 +388,7 @@
 
   const autoIncrementCableId = () => {
     const id = (formEls.cableId.value || '').trim();
-    const match = id.match(/(.*?)(\d+)(\D*)$/);
+    const match = id.match(/(.*?)(\\d+)(\\D*)$/);
     if (!match) return id;
     const prefix = match[1], num = match[2], suffix = match[3] || '';
     const next = String(parseInt(num, 10) + 1).padStart(num.length, '0');
@@ -348,34 +397,46 @@
 
   const prepareNextCore = () => {
     const keep = {
+      // Keep customer (sticky for a job)
+      testDate: formEls.testDate.value,
+      customerName: formEls.customerName.value,
+      siteName: formEls.siteName.value,
+      // Keep link characteristics
       fibreType: formEls.fibreType.value,
       cableLength: formEls.cableLength.value,
       connectorCount: formEls.connectorCount.value,
-      spliceCount: formEls.spliceCount.value
+      spliceCount: formEls.spliceCount.value,
+      locationA: formEls.locationA.value,
+      locationB: formEls.locationB.value
     };
     const nextId = autoIncrementCableId();
-    // clear all
-    ['cableId','lossAB1','lossBA1','lossAB2','lossBA2'].forEach(id => formEls[id].value = '');
-    // restore characteristics
-    formEls.fibreType.value = keep.fibreType;
-    formEls.cableLength.value = keep.cableLength;
-    formEls.connectorCount.value = keep.connectorCount;
-    formEls.spliceCount.value = keep.spliceCount;
+    // clear values specific to a single core
+    ['cableId','fibreId','lossAB1','lossBA1','lossAB2','lossBA2'].forEach(id => formEls[id].value = '');
+    // restore sticky fields
+    Object.entries(keep).forEach(([k,v]) => { if (formEls[k] != null) formEls[k].value = v; });
     if (nextId) formEls.cableId.value = nextId;
     ['resultAB1','resultBA1','resultAB2','resultBA2'].forEach(id => {
       const el = formEls[id]; el.className = 'result-badge'; el.textContent = ''; el.removeAttribute('title');
     });
-    checkLinkCharacteristics();
     formEls.cableId.focus();
   };
 
   const saveCurrent = () => {
     const data = {
+      // Customer
+      testDate: formEls.testDate.value,
+      customerName: formEls.customerName.value,
+      siteName: formEls.siteName.value,
+      // Link
       cableId: formEls.cableId.value,
+      fibreId: formEls.fibreId.value,
+      locationA: formEls.locationA.value,
+      locationB: formEls.locationB.value,
       fibreType: formEls.fibreType.value,
       cableLength: formEls.cableLength.value,
       connectorCount: formEls.connectorCount.value,
       spliceCount: formEls.spliceCount.value,
+      // Results
       wavelength1: formEls.wavelength1.value,
       wavelength2: formEls.wavelength2.value,
       lossAB1: formEls.lossAB1.value,
@@ -395,6 +456,7 @@
     prepareNextCore();
   };
 
+  // Export one test to Google Apps Script
   const exportSingleTest = async (cableId) => {
     const scriptUrl = formEls.googleScriptUrl.value;
     const testData = getTests().find(t => t.cableId === cableId);
@@ -407,7 +469,14 @@
       const statusOf = (loss, max) => (Number.isNaN(parseDec(loss)) ? 'Incomplete' : (max==null ? '' : (parseDec(loss) <= max ? 'Pass' : 'Fail')));
       return {
         timestamp: new Date().toISOString(),
-        cableId: d.cableId, fibreType: d.fibreType, length: d.cableLength, connectors: d.connectorCount, splices: d.spliceCount,
+        // Customer
+        testDate: d.testDate || '',
+        customerName: d.customerName || '',
+        siteName: d.siteName || '',
+        // Link
+        cableId: d.cableId, fibreId: d.fibreId || '', locationA: d.locationA || '', locationB: d.locationB || '',
+        fibreType: d.fibreType, length: d.cableLength, connectors: d.connectorCount, splices: d.spliceCount,
+        // Results
         wl1: d.wavelength1, maxLoss1: max1!=null ? max1.toFixed(2) : 'N/A',
         lossAB1: d.lossAB1 ?? '', statusAB1: statusOf(d.lossAB1, max1),
         lossBA1: d.lossBA1 ?? '', statusBA1: statusOf(d.lossBA1, max1),
@@ -435,7 +504,7 @@
       const t = getTests().find(x => x.cableId === id); if (!t) return;
       Object.entries(t).forEach(([k,v]) => { if (formEls[k]) formEls[k].value = v; });
       ['lossAB1','lossBA1','lossAB2','lossBA2'].forEach(i => { if (formEls[i].value) handleIndividualLossInput(formEls[i]); });
-      checkLinkCharacteristics(); showToast(`Loaded: ${id}`);
+      showToast(`Loaded: ${id}`);
     } else if (action === 'delete') {
       if (!confirm(`Delete ${id}?`)) return;
       saveTests(getTests().filter(x => x.cableId !== id)); renderSavedTests(); showToast(`Deleted: ${id}`);
@@ -465,27 +534,30 @@
   const handleDownloadCSV = () => {
     const tests = getTests(); if (!tests.length) { showToast('No saved tests'); return; }
     const headers = [
-      "Timestamp","Cable ID","Fibre Type","Length (m)","Connectors","Splices",
-      "Wavelength 1 (nm)","Max Loss WL1 (dB)","Loss A->B WL1 (dB)","Status A->B WL1",
-      "Loss B->A WL1 (dB)","Status B->A WL1","Wavelength 2 (nm)","Max Loss WL2 (dB)",
-      "Loss A->B WL2 (dB)","Status A->B WL2","Loss B->A WL2 (dB)","Status B->A WL2",
+      "Timestamp",
+      // Customer
+      "Test Date","Customer Name","Site Name",
+      // Link
+      "Cable ID","Fibre ID/Number","Location A","Location B","Fibre Type","Length (m)","Connectors","Splices",
+      // Results
+      "Wavelength 1 (nm)","Max Loss WL1 (dB)","Loss A->B WL1 (dB)","Status A->B WL1","Loss B->A WL1 (dB)","Status B->A WL1",
+      "Wavelength 2 (nm)","Max Loss WL2 (dB)","Loss A->B WL2 (dB)","Status A->B WL2","Loss B->A WL2 (dB)","Status B->A WL2",
       "Final Status"
     ];
     const rows = [headers.join(',')];
     tests.forEach(t => {
-      const data = {...t};
       const wl1 = parseDec(t.wavelength1), wl2 = parseDec(t.wavelength2);
       const max1 = calculateMaxLoss(t, wl1), max2 = calculateMaxLoss(t, wl2);
       const statusOf = (loss, max) => (Number.isNaN(parseDec(loss)) ? 'Incomplete' : (max==null ? '' : (parseDec(loss) <= max ? 'Pass' : 'Fail')));
       const vals = [
         new Date().toISOString(),
-        data.cableId, data.fibreType, data.cableLength, data.connectorCount, data.spliceCount,
-        data.wavelength1, (max1!=null?max1.toFixed(2):'N/A'),
-        data.lossAB1 ?? '', statusOf(data.lossAB1, max1),
-        data.lossBA1 ?? '', statusOf(data.lossBA1, max1),
-        data.wavelength2, (max2!=null?max2.toFixed(2):'N/A'),
-        data.lossAB2 ?? '', statusOf(data.lossAB2, max2),
-        data.lossBA2 ?? '', statusOf(data.lossBA2, max2),
+        // Customer
+        t.testDate || '', t.customerName || '', t.siteName || '',
+        // Link
+        t.cableId, t.fibreId || '', t.locationA || '', t.locationB || '', t.fibreType, t.cableLength, t.connectorCount, t.spliceCount,
+        // Results
+        t.wavelength1, (max1!=null?max1.toFixed(2):'N/A'), t.lossAB1 ?? '', statusOf(t.lossAB1, max1), t.lossBA1 ?? '', statusOf(t.lossBA1, max1),
+        t.wavelength2, (max2!=null?max2.toFixed(2):'N/A'), t.lossAB2 ?? '', statusOf(t.lossAB2, max2), t.lossBA2 ?? '', statusOf(t.lossBA2, max2),
         getTestStatus(t)
       ];
       rows.push(vals.map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
@@ -498,15 +570,6 @@
     document.body.appendChild(a); a.click(); a.remove();
     showToast('CSV downloaded');
   };
-
-  // --- Listeners
-  ['lossAB1','lossBA1','lossAB2','lossBA2'].forEach(id => {
-    formEls[id].addEventListener('input', (e) => handleIndividualLossInput(e.target));
-    formEls[id].addEventListener('change', (e) => handleIndividualLossInput(e.target));
-  });
-  ['cableId','fibreType','cableLength','connectorCount','spliceCount'].forEach(id => {
-    formEls[id].addEventListener('input', checkLinkCharacteristics);
-  });
 
   // Fibre type sets wavelengths (and on input for mobile)
   const setWavelengthsForFibre = () => {
@@ -521,7 +584,12 @@
   formEls.fibreType.addEventListener('change', setWavelengthsForFibre);
   formEls.fibreType.addEventListener('input', setWavelengthsForFibre);
 
-  // Buttons
+  // Listeners
+  ['lossAB1','lossBA1','lossAB2','lossBA2'].forEach(id => {
+    formEls[id].addEventListener('input', (e) => handleIndividualLossInput(e.target));
+    formEls[id].addEventListener('change', (e) => handleIndividualLossInput(e.target));
+  });
+
   formEls.saveBtn.addEventListener('click', saveCurrent);
   formEls.newBtn.addEventListener('click', prepareNextCore);
   formEls.exportAllBtn.addEventListener('click', handleExportAll);
@@ -534,13 +602,6 @@
 
   // Init
   renderSavedTests();
-</script>
-  <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(()=>{});
-    });
-  }
 </script>
 </body>
 </html>
