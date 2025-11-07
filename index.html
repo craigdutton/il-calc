@@ -5,9 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Insertion Loss Calculator — Standalone Mobile</title>
 <meta name="theme-color" content="#4f46e5" />
+
+<!-- (Optional PWA bits — keep if you already use them)
+<link rel="manifest" href="./manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+-->
+
 <style>
-  :root { --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-top: env(safe-area-inset-top, 0px); }
-  body { font-family: -apple-system, system-ui, Segoe UI, Roboto, Inter, Arial, sans-serif; background:#f7f8fb; color:#111827; margin:0; padding-bottom:calc(168px + var(--safe-bottom)); }
+  :root {
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+  }
+  html, body {
+    height: 100%;
+  }
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+    font-family: -apple-system, system-ui, Segoe UI, Roboto, Inter, Arial, sans-serif;
+    background:#f7f8fb;
+    color:#111827;
+    margin:0;
+    /* Extra room at top for iOS status bar/notch; extra room at bottom for sticky footer */
+    padding-top: calc(10px + var(--safe-top));
+    padding-bottom: calc(196px + var(--safe-bottom));
+  }
   .container { max-width: 720px; margin: 0 auto; padding: 16px; }
   h1 { font-size: 22px; margin: 0 0 6px; }
   .sub { color:#6b7280; font-size: 13px; margin: 0 0 8px; }
@@ -80,7 +105,7 @@
       </div>
     </section>
 
-    <!-- Link characteristics -->
+    <!-- Link section -->
     <section class="card" style="margin-bottom:12px;">
       <div class="section-title">Link</div>
       <div class="row">
@@ -268,7 +293,7 @@
     if (!formEls.testDate.value) formEls.testDate.value = local;
   } catch {}
 
-  // --- Constants (same as original)
+  // --- Constants
   const ATTENUATION_RATES = {
     'OS1/OS2': { 1310: 0.4, 1550: 0.25, 'default': 0.4 },
     'OM1': { 850: 3.5, 1300: 1.5, 'default': 3.5 },
@@ -280,15 +305,7 @@
   const CONNECTOR_LOSS = 0.75;
   const SPLICE_LOSS = 0.3;
 
-  // --- Utils
   const parseDec = (v) => { if (v == null) return NaN; return parseFloat(String(v).replace(',', '.')); };
-  const showToast = (msg) => {
-    formEls.toastText.textContent = msg;
-    formEls.toast.classList.add('show');
-    if ('vibrate' in navigator) navigator.vibrate(15);
-    clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => formEls.toast.classList.remove('show'), 1600);
-  };
 
   // --- Max loss calc
   const calculateMaxLoss = (data, wavelength) => {
@@ -301,7 +318,7 @@
     return connectorLoss + spliceLoss + cableLoss;
   };
 
-  // --- PASS/FAIL per input (instant)
+  // --- PASS/FAIL for each input
   const handleIndividualLossInput = (input) => {
     const resultBadge = document.getElementById(input.id.replace('loss', 'result'));
     const isWl1 = input.id.includes('1');
@@ -318,7 +335,7 @@
     const maxLoss = calculateMaxLoss(formData, wavelength);
 
     if (maxLoss !== null) {
-      maxLossDisplay.textContent = `Max: ${maxLoss.toFixed(2)} dB`; 
+      maxLossDisplay.textContent = `Max: ${maxLoss.toFixed(2)} dB`;
     } else {
       maxLossDisplay.textContent = '';
       resultBadge.className = 'result-badge';
@@ -344,7 +361,7 @@
     }
   };
 
-  // --- Saved tests status
+  // --- Saved tests status and list
   const getTestStatus = (t) => {
     const required = ['lossAB1','lossBA1','lossAB2','lossBA2'];
     if (required.some(k => !t[k] || t[k] === '')) return 'incomplete';
@@ -364,14 +381,14 @@
     tests.forEach(test => {
       const status = getTestStatus(test);
       const dotCls = status==='pass' ? 'pass' : status==='fail' ? 'fail' : status==='incomplete' ? 'incomplete' : 'unknown';
-      const div = document.createElement('div');
-      div.className = 'list-item';
       const labelLine = [
         test.cableId || '',
         test.fibreType ? `· ${test.fibreType}` : '',
         test.customerName ? `· ${test.customerName}` : '',
         test.siteName ? `· ${test.siteName}` : ''
       ].join(' ').trim();
+      const div = document.createElement('div');
+      div.className = 'list-item';
       div.innerHTML = `
         <div class="inline" style="min-width:0;">
           <div class="dot ${dotCls}"></div>
@@ -388,16 +405,24 @@
 
   const autoIncrementCableId = () => {
     const id = (formEls.cableId.value || '').trim();
-    const match = id.match(/(.*?)(\\d+)(\\D*)$/);
+    const match = id.match(/(.*?)(\d+)(\D*)$/);
     if (!match) return id;
     const prefix = match[1], num = match[2], suffix = match[3] || '';
     const next = String(parseInt(num, 10) + 1).padStart(num.length, '0');
     return prefix + next + suffix;
   };
 
+  const showToast = (msg) => {
+    formEls.toastText.textContent = msg;
+    formEls.toast.classList.add('show');
+    if ('vibrate' in navigator) navigator.vibrate(15);
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => formEls.toast.classList.remove('show'), 1600);
+  };
+
   const prepareNextCore = () => {
     const keep = {
-      // Keep customer (sticky for a job)
+      // Keep customer + job info
       testDate: formEls.testDate.value,
       customerName: formEls.customerName.value,
       siteName: formEls.siteName.value,
@@ -410,9 +435,9 @@
       locationB: formEls.locationB.value
     };
     const nextId = autoIncrementCableId();
-    // clear values specific to a single core
+    // clear per-core fields
     ['cableId','fibreId','lossAB1','lossBA1','lossAB2','lossBA2'].forEach(id => formEls[id].value = '');
-    // restore sticky fields
+    // restore kept fields
     Object.entries(keep).forEach(([k,v]) => { if (formEls[k] != null) formEls[k].value = v; });
     if (nextId) formEls.cableId.value = nextId;
     ['resultAB1','resultBA1','resultAB2','resultBA2'].forEach(id => {
@@ -461,7 +486,7 @@
     const scriptUrl = formEls.googleScriptUrl.value;
     const testData = getTests().find(t => t.cableId === cableId);
     if (!scriptUrl || !testData) return { success:false, error:'Missing URL or test' };
-    const payload = (()=>{
+    const payload = (()=> {
       const d = {...testData};
       const wl1 = parseDec(d.wavelength1), wl2 = parseDec(d.wavelength2);
       const max1 = calculateMaxLoss(d, wl1);
@@ -603,5 +628,16 @@
   // Init
   renderSavedTests();
 </script>
+
+<!-- (Optional PWA SW registration) 
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    });
+  }
+</script>
+-->
+
 </body>
 </html>
