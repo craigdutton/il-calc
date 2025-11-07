@@ -1,45 +1,47 @@
-const CACHE_NAME = 'il-mobile-v5';
+// Simple offline-first service worker for IL Calculator
+const CACHE_NAME = "il-mobile-v9";
 const APP_SHELL = [
-  './',
-  './index.html',
-  './insertion-loss-calculator-mobile.html',
-  './manifest.webmanifest',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+  "./",
+  "./index.html",
+  "./insertion-loss-calculator-mobile.html",
+  "./manifest.webmanifest",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
 ];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
+// Install: cache the app shell
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+  );
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+// Activate: clean up old caches
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
-self.addEventListener('fetch', (e) => {
-  const req = e.request;
-  const url = new URL(req.url);
-  if (url.origin === self.location.origin) {
-    e.respondWith(
-      caches.match(req).then(cached => cached || fetch(req).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-        return res;
-      }).catch(() => cached))
-    );
-    return;
-  }
-  e.respondWith(
-    fetch(req).then(res => {
-      const copy = res.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-      return res;
-    }).catch(() => caches.match(req))
+// Fetch: serve cached assets first, then network
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      return (
+        cached ||
+        fetch(request)
+          .then((response) => {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            return response;
+          })
+          .catch(() => cached)
+      );
+    })
   );
 });
