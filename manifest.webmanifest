@@ -4,8 +4,10 @@
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "orientation": "portrait",
+  "background_color": "#0b1220",
   "theme_color": "#4f46e5",
+  "description": "A mobile field tool for fibre optic insertion loss testing — offline capable, pass/fail calculation, and saved test management.",
   "icons": [
     {
       "src": "icons/icon-192.png",
