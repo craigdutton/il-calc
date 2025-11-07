@@ -596,6 +596,10 @@
   formEls.downloadCsvBtn.addEventListener('click', handleDownloadCSV);
   formEls.savedTestsList.addEventListener('click', handleSavedAction);
 
+    // Re-render saved list whenever the Site Name changes
+  formEls.siteName.addEventListener('input', renderSavedTests);
+  formEls.siteName.addEventListener('change', renderSavedTests);
+
   // Persist URL
   formEls.googleScriptUrl.value = localStorage.getItem('googleScriptUrl') || '';
   formEls.googleScriptUrl.addEventListener('change', () => localStorage.setItem('googleScriptUrl', formEls.googleScriptUrl.value));
